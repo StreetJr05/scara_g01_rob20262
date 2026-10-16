@@ -45,6 +45,9 @@
 /* PWM (LEDC)                                                                */
 /* ------------------------------------------------------------------------- */
 #define PWM_FREQ_HZ       20000
+/* 1: locked anti-phase (PWM on INV, D2 = enable): linear, no dead zone.
+ * 0: drive/coast (PWM on D2): ~50 % duty dead zone with this driver. See hal.c */
+#define MOTOR_DRIVE_ANTIPHASE 1
 #define PWM_RES_BITS      10           /* 0..1023 */
 
 /* ------------------------------------------------------------------------- */
@@ -137,27 +140,27 @@
 /* DEFAULT runtime tunables (overridden by scara_params.yaml at runtime)     */
 /* PID units: error in rad -> output duty [-1, 1]                            */
 /* ------------------------------------------------------------------------- */
-#define J1_KP_DEF        4.0f
+#define J1_KP_DEF        6.0f
 #define J1_KI_DEF        1.5f
 #define J1_KD_DEF        0.08f
-#define J1_KFF_DEF       0.0f      /* velocity feed-forward [duty / (rad/s)] */
+#define J1_KFF_DEF       0.20f     /* velocity feed-forward [duty / (rad/s)], measured with `tune` */
 #define J1_MIN_DUTY_DEF  0.08f     /* static-friction (deadzone) compensation */
 #define J1_MAX_DUTY_DEF  0.80f
 #define J1_VMAX_DEF      1.5f      /* rad/s, point-to-point */
 #define J1_AMAX_DEF      3.0f      /* rad/s^2 */
 #define J1_JOG_VMAX_DEF  0.6f      /* rad/s at full jog */
 
-#define J2_KP_DEF        4.0f
+#define J2_KP_DEF        6.0f
 #define J2_KI_DEF        1.5f
 #define J2_KD_DEF        0.08f
-#define J2_KFF_DEF       0.0f
+#define J2_KFF_DEF       0.18f
 #define J2_MIN_DUTY_DEF  0.08f
 #define J2_MAX_DUTY_DEF  0.80f
 #define J2_VMAX_DEF      2.0f
 #define J2_AMAX_DEF      4.0f
 #define J2_JOG_VMAX_DEF  0.8f
 
-#define POS_TOL_DEF          DEG2RAD(0.5f)   /* "in position" band */
+#define POS_TOL_DEF          DEG2RAD(0.2f)   /* "in position" band */
 #define SETTLE_MS_DEF        200.0f          /* must stay in band this long */
 #define P_UP_MS_DEF          300.0f          /* time for the solenoid to rise  */
 #define P_DOWN_MS_DEF        300.0f          /* time for the P to reach bottom */

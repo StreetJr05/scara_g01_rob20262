@@ -2,11 +2,19 @@
  * @file hal.c
  * @brief Hardware abstraction implementation (ESP-IDF v5.x drivers).
  *
- * MC33926 wiring used here: IN1/IN2 fixed by hardware, INV selects the
- * direction and D2 (inverted disable) receives the PWM -> D2 high = bridge
- * enabled, so duty = speed. During the PWM low phase the outputs are
- * tri-stated (coasting), which is fine for a horizontal SCARA (no gravity
- * load on J1/J2).
+ * MC33926 wiring: IN1/IN2 fixed by hardware (opposite levels), INV swaps the
+ * bridge direction, D2 is the inverted disable (low = outputs tri-stated).
+ *
+ * MOTOR_DRIVE_ANTIPHASE = 1 (default): locked anti-phase. The PWM goes to INV
+ * and D2 is held high while the motor is driven, so the bridge alternates
+ * forward/reverse every period: V_motor = (1 - 2 d) * Vbat, linear through
+ * zero (d = 0.5 -> 0 V, which also brakes/holds). hal_motors_off() pulls D2
+ * low -> coast.
+ *
+ * MOTOR_DRIVE_ANTIPHASE = 0: sign-magnitude drive/coast, PWM on D2 and INV as
+ * direction. The off phase tri-states the bridge, the current returns to the
+ * supply through the diodes and V_motor ~ (2 d - 1) * Vbat: almost no torque
+ * below ~50 % duty (measured: joints break away only at |u| ~ 0.5).
  */
 #include "hal.h"
 #include "scara_config.h"
@@ -48,6 +56,25 @@ static void motors_init(void)
     ESP_ERROR_CHECK(ledc_timer_config(&timer));
 
     for (int j = 0; j < NUM_JOINTS; j++) {
+#if MOTOR_DRIVE_ANTIPHASE
+        /* D2 = plain output, low (bridge disabled) until the first command */
+        gpio_config_t en = {
+            .pin_bit_mask = 1ULL << s_hw[j].pin_pwm,
+            .mode = GPIO_MODE_OUTPUT,
+        };
+        ESP_ERROR_CHECK(gpio_config(&en));
+        gpio_set_level(s_hw[j].pin_pwm, 0);
+
+        ledc_channel_config_t ch = {      /* PWM on INV, 50 % = 0 V */
+            .gpio_num = s_hw[j].pin_dir,
+            .speed_mode = LEDC_HIGH_SPEED_MODE,
+            .channel = s_hw[j].ledc_ch,
+            .timer_sel = LEDC_TIMER_0,
+            .duty = PWM_MAX_COUNT / 2,
+            .hpoint = 0,
+        };
+        ESP_ERROR_CHECK(ledc_channel_config(&ch));
+#else
         gpio_config_t dir = {
             .pin_bit_mask = 1ULL << s_hw[j].pin_dir,
             .mode = GPIO_MODE_OUTPUT,
@@ -64,6 +91,7 @@ static void motors_init(void)
             .hpoint = 0,
         };
         ESP_ERROR_CHECK(ledc_channel_config(&ch));
+#endif
     }
 }
 
@@ -135,17 +163,32 @@ void hal_motor_set(int joint, float duty)
     joint_hw_t *hw = &s_hw[joint];
     if (duty > 1.0f) duty = 1.0f;
     if (duty < -1.0f) duty = -1.0f;
+#if MOTOR_DRIVE_ANTIPHASE
+    /* fraction of the period with INV high (= reverse): V = (1 - 2 d) Vbat */
+    const float u = hw->motor_invert ? -duty : duty;
+    const float d = 0.5f * (1.0f - u);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, hw->ledc_ch, (uint32_t)(d * PWM_MAX_COUNT + 0.5f));
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, hw->ledc_ch);
+    gpio_set_level(hw->pin_pwm, 1);   /* bridge enabled */
+#else
     bool reverse = (duty < 0.0f) ^ hw->motor_invert;
     gpio_set_level(hw->pin_dir, reverse ? 1 : 0);
     uint32_t cnt = (uint32_t)(fabsf(duty) * PWM_MAX_COUNT + 0.5f);
     ledc_set_duty(LEDC_HIGH_SPEED_MODE, hw->ledc_ch, cnt);
     ledc_update_duty(LEDC_HIGH_SPEED_MODE, hw->ledc_ch);
+#endif
 }
 
 void hal_motors_off(void)
 {
     for (int j = 0; j < NUM_JOINTS; j++) {
+#if MOTOR_DRIVE_ANTIPHASE
+        gpio_set_level(s_hw[j].pin_pwm, 0);   /* D2 low: outputs tri-stated, motor coasts */
+        ledc_set_duty(LEDC_HIGH_SPEED_MODE, s_hw[j].ledc_ch, PWM_MAX_COUNT / 2);
+        ledc_update_duty(LEDC_HIGH_SPEED_MODE, s_hw[j].ledc_ch);
+#else
         hal_motor_set(j, 0.0f);
+#endif
     }
 }
 

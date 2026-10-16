@@ -10,10 +10,10 @@ scara_bridge:
     frame_id: world
 
     # ---------------- joint 1 (shoulder) ----------------
-    j1_kp: 4.0
+    j1_kp: 6.0
     j1_ki: 1.5
     j1_kd: 0.08
-    j1_kff: 0.0             # velocity feed-forward [duty per rad/s]
+    j1_kff: 0.20            # velocity feed-forward [duty per rad/s] (tune: 0.20-0.22)
     j1_min_duty: 0.08       # static friction compensation
     j1_max_duty: 0.80       # output saturation
     j1_vmax: 1.5            # point-to-point max speed
@@ -21,10 +21,10 @@ scara_bridge:
     j1_jog_vmax: 0.6        # jog speed at 100 %
 
     # ---------------- joint 2 (elbow) ----------------
-    j2_kp: 4.0
+    j2_kp: 6.0
     j2_ki: 1.5
     j2_kd: 0.08
-    j2_kff: 0.0
+    j2_kff: 0.18            # (tune: 0.18-0.19)
     j2_min_duty: 0.08
     j2_max_duty: 0.80
     j2_vmax: 2.0
@@ -32,7 +32,7 @@ scara_bridge:
     j2_jog_vmax: 0.8
 
     # ---------------- common ----------------
-    pos_tol: 0.00873        # [rad] in-position band (0.5 deg)
+    pos_tol: 0.0035         # [rad] in-position band (0.2 deg)
     settle_ms: 200.0        # must stay in band this long to count as "reached"
     p_up_ms: 300.0          # solenoid rise time
     p_down_ms: 300.0        # P fall time, then the valve turns ON

@@ -27,6 +27,7 @@ setup(
             'goto = scara_control.goto:main',
             'characterize = scara_control.characterize:main',
             'analyze = scara_control.analyze:main',
+            'tune = scara_control.tune:main',
         ],
     },
 )
