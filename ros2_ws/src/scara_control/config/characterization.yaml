@@ -1,0 +1,13 @@
+# Accuracy / precision test (guide: >= 5 points, >= 10 repetitions)
+# Units: mm, base frame. Workspace: |L1-L2| < r < L1+L2  (about 170 < r < 202 mm: J2 travels only -64..+67.5 deg)
+points:
+  - [190.0,    0.0, 65.0]
+  - [160.0,  100.0, 65.0]
+  - [170.0,  -75.0, 65.0]
+  - [185.0,   50.0, 65.0]
+  - [100.0,  160.0, 65.0]
+cycles: 10                 # P1..P5 visited once per cycle (ISO 9283 style)
+approach: [175.0,  60.0, 65.0]   # visited before every point (same approach direction); null to disable
+dwell_s: 1.0               # wait before recording
+home_first: true
+ground_truth: manual       # manual | none

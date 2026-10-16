@@ -1,0 +1,41 @@
+# Runtime controller parameters, pushed to the ESP32 by scara_bridge at start-up,
+# on every (re)connection and whenever you change one live:
+#     ros2 param set /scara_bridge j1_kp 5.0
+# PID units: error [rad] -> PWM duty [-1, 1]. Speeds in rad/s, accelerations in rad/s^2.
+# Compile-time defaults (used if the bridge is not running) are in
+# firmware/main/scara_config.h  (*_DEF).
+scara_bridge:
+  ros__parameters:
+    p_stroke: 0.04          # [m] P travel, only for RViz (must match the xacro)
+    frame_id: world
+
+    # ---------------- joint 1 (shoulder) ----------------
+    j1_kp: 4.0
+    j1_ki: 1.5
+    j1_kd: 0.08
+    j1_kff: 0.0             # velocity feed-forward [duty per rad/s]
+    j1_min_duty: 0.08       # static friction compensation
+    j1_max_duty: 0.80       # output saturation
+    j1_vmax: 1.5            # point-to-point max speed
+    j1_amax: 3.0            # point-to-point max acceleration
+    j1_jog_vmax: 0.6        # jog speed at 100 %
+
+    # ---------------- joint 2 (elbow) ----------------
+    j2_kp: 4.0
+    j2_ki: 1.5
+    j2_kd: 0.08
+    j2_kff: 0.0
+    j2_min_duty: 0.08
+    j2_max_duty: 0.80
+    j2_vmax: 2.0
+    j2_amax: 4.0
+    j2_jog_vmax: 0.8
+
+    # ---------------- common ----------------
+    pos_tol: 0.00873        # [rad] in-position band (0.5 deg)
+    settle_ms: 200.0        # must stay in band this long to count as "reached"
+    p_up_ms: 300.0          # solenoid rise time
+    p_down_ms: 300.0        # P fall time, then the valve turns ON
+    deriv_cutoff_hz: 20.0   # derivative low-pass filter
+    follow_err_max: 0.436   # [rad] (25 deg) |reference - position| -> FAULT
+    elbow_pref: 0.0         # IK: 0 least motion, 1 -> q2 >= 0, -1 -> q2 < 0

@@ -1,0 +1,6 @@
+{
+    "cmake.sourceDirectory": "/home/miguel-calle/scara_rrp/firmware",
+    "urdf-visualizer.packages": {
+        "scara_description": "ros2_ws/src/scara_description"
+    }
+}

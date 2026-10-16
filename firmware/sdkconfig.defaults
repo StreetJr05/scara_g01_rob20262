@@ -1,0 +1,21 @@
+# Target: classic ESP32 (GPIO 34-39 are used for encoders)
+CONFIG_IDF_TARGET="esp32"
+
+# micro-ROS over UART0 (USB cable)
+CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE=y
+CONFIG_MICRO_ROS_ESP_UART_TRANSPORT=y
+
+# UART0 belongs to micro-ROS: no console / logs on it
+CONFIG_ESP_CONSOLE_NONE=y
+CONFIG_LOG_DEFAULT_LEVEL_NONE=y
+CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
+
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096
+CONFIG_ESP_TASK_WDT_EN=n
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# UART0 pins must be given explicitly: with the console disabled, ESP-IDF 5.4
+# does not leave UART0 routed to GPIO1/3, and -1 ("keep current") sends nothing.
+CONFIG_MICROROS_UART_TXD=1
+CONFIG_MICROROS_UART_RXD=3

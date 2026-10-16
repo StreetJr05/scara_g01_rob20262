@@ -1,0 +1,7 @@
+# ros2 run scara_control goto --file demo_points.yaml   (z <= 45 mm -> P down -> valve ON)
+units: mm
+points:
+  - [185.0,  40.0, 65.0]
+  - [185.0,  40.0, 25.0]
+  - [120.0, 145.0, 65.0]
+  - [180.0, -60.0, 65.0]

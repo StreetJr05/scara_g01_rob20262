@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<!--
+  RRP SCARA model. Visuals come from the CAD STLs in ../meshes (exported in mm);
+  collisions are simple boxes around them. The values that the firmware also
+  uses (firmware/main/scara_config.h) are marked [FW]:
+    L1 = L1_M, L2 = L2_M, tool_z_up / tool_z_down = TOOL_Z_UP_M / TOOL_Z_DOWN_M
+
+  Frames (all z up, joint angle 0 = arm along +X):
+    base_link  on the table, on the joint 1 axis
+    link1      on the joint 1 axis, at the BOTTOM face of link 1
+    link2      on the joint 2 axis, at the BOTTOM face of link 2
+    link3      on the tool axis, at link 2's bottom face when P is UP
+    tool0      tool tip
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="scara_rrp">
+
+  <!-- ===================== parameters (meters / radians) ===================== -->
+  <xacro:property name="PI" value="3.14159265359"/>
+  <xacro:property name="mm" value="0.001"/>
+
+  <xacro:property name="L1"          value="0.11211"/>  <!-- [FW] L1_M -->
+  <xacro:property name="L2"          value="0.09000"/>  <!-- [FW] L2_M -->
+  <xacro:property name="link1_z"     value="0.1446"/>   <!-- bottom of link 1 above the table -->
+  <xacro:property name="link2_z"     value="0.1716"/>   <!-- bottom of link 2 above the table -->
+
+  <!-- Tool tip height above the table. TODO(measure): placeholders, keep equal to the firmware -->
+  <xacro:property name="tool_z_up"   value="0.065"/>    <!-- [FW] TOOL_Z_UP_M -->
+  <xacro:property name="tool_z_down" value="0.025"/>    <!-- [FW] TOOL_Z_DOWN_M -->
+  <xacro:property name="p_stroke"    value="${tool_z_up - tool_z_down}"/>
+  <xacro:property name="quill_len"   value="${link2_z - tool_z_up}"/>  <!-- link 2 bottom -> tool tip, P up -->
+  <xacro:property name="quill_r"     value="0.012"/>    <!-- placeholder until meshes/link3.stl exists -->
+
+  <!-- joint 1 axis position in base.stl coordinates (center of the 42 mm bore) -->
+  <xacro:property name="base_axis_x" value="-0.030"/>
+  <!-- base.stl yaw about the joint 1 axis: PI = the motor rails point to -X, so at q1 = 0
+       the arm points away from them. Use 0 or +-PI/2 if the robot's 0 deg is elsewhere. -->
+  <xacro:property name="base_yaw"    value="${PI}"/>
+
+  <!-- joint limits = firmware soft limits J1/J2_MIN/MAX_RAD -->
+  <xacro:property name="j1_min"      value="${-81*PI/180}"/>
+  <xacro:property name="j1_max"      value="${80*PI/180}"/>
+  <xacro:property name="j2_min"      value="${-64*PI/180}"/>
+  <xacro:property name="j2_max"      value="${67.5*PI/180}"/>
+
+  <!-- ===================== materials ===================== -->
+  <material name="dark"><color rgba="0.15 0.15 0.18 1"/></material>
+  <material name="blue"><color rgba="0.10 0.35 0.75 1"/></material>
+  <material name="orange"><color rgba="0.95 0.50 0.10 1"/></material>
+  <material name="grey"><color rgba="0.70 0.70 0.72 1"/></material>
+
+  <!-- box inertia helper -->
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertia ixx="${m*(y*y+z*z)/12}" ixy="0" ixz="0" iyy="${m*(x*x+z*z)/12}" iyz="0" izz="${m*(x*x+y*y)/12}"/>
+  </xacro:macro>
+
+  <!-- ===================== base ===================== -->
+  <link name="world"/>
+
+  <joint name="world_to_base" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- base.stl: origin on the table, joint 1 axis at x = -30 mm, 170 x 140 x 141 mm -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="${-base_axis_x*cos(base_yaw)} ${-base_axis_x*sin(base_yaw)} 0" rpy="0 0 ${base_yaw}"/>
+      <geometry><mesh filename="package://scara_description/meshes/base.stl" scale="${mm} ${mm} ${mm}"/></geometry>
+      <material name="dark"/>
+    </visual>
+    <collision>
+      <origin xyz="${-(base_axis_x + 0.010)*cos(base_yaw)} ${-(base_axis_x + 0.010)*sin(base_yaw)} 0.0705" rpy="0 0 ${base_yaw}"/>
+      <geometry><box size="0.170 0.140 0.141"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.05"/>
+      <mass value="2.0"/>
+      <xacro:box_inertia m="2.0" x="0.170" y="0.140" z="0.141"/>
+    </inertial>
+  </link>
+
+  <!-- ===================== arm 1 (R) ===================== -->
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 ${link1_z}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${j1_min}" upper="${j1_max}" effort="5" velocity="2.0"/>
+  </joint>
+
+  <!-- link1.stl: origin at the joint 1 hub, bottom face z = 0, arm drawn along -X -> yaw PI -->
+  <link name="link1">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 ${PI}"/>
+      <geometry><mesh filename="package://scara_description/meshes/link1.stl" scale="${mm} ${mm} ${mm}"/></geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <origin xyz="0.056 0 0.0115"/>
+      <geometry><box size="0.192 0.080 0.023"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="${L1/2} 0 0.0115"/>
+      <mass value="0.4"/>
+      <xacro:box_inertia m="0.4" x="0.192" y="0.080" z="0.023"/>
+    </inertial>
+  </link>
+
+  <!-- ===================== arm 2 (R) ===================== -->
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="${L1} 0 ${link2_z - link1_z}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${j2_min}" upper="${j2_max}" effort="3" velocity="2.5"/>
+  </joint>
+
+  <!-- link2.stl: origin at the joint 2 hub, bottom face z = 0, arm drawn along -X -> yaw PI -->
+  <link name="link2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 ${PI}"/>
+      <geometry><mesh filename="package://scara_description/meshes/link2.stl" scale="${mm} ${mm} ${mm}"/></geometry>
+      <material name="orange"/>
+    </visual>
+    <collision>
+      <origin xyz="0.045 0 0.0075"/>
+      <geometry><box size="0.170 0.080 0.015"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="${L2/2} 0 0.0075"/>
+      <mass value="0.3"/>
+      <xacro:box_inertia m="0.3" x="0.170" y="0.080" z="0.015"/>
+    </inertial>
+  </link>
+
+  <!-- ===================== P (solenoid, binary) ===================== -->
+  <!-- q3 = 0 -> P UP (solenoid energized), q3 = p_stroke -> P DOWN -->
+  <joint name="joint3" type="prismatic">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="${L2} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="0" upper="${p_stroke}" effort="10" velocity="0.5"/>
+  </joint>
+
+  <!-- TODO: replace the cylinder with meshes/link3.stl once it exists -->
+  <link name="link3">
+    <visual>
+      <origin xyz="0 0 ${-quill_len/2}"/>
+      <geometry><cylinder radius="${quill_r}" length="${quill_len}"/></geometry>
+      <material name="grey"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${-quill_len/2}"/>
+      <geometry><cylinder radius="${quill_r}" length="${quill_len}"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 ${-quill_len/2}"/>
+      <mass value="0.1"/>
+      <xacro:box_inertia m="0.1" x="${2*quill_r}" y="${2*quill_r}" z="${quill_len}"/>
+    </inertial>
+  </link>
+
+  <!-- tool tip (suction cup / dispenser nozzle) -->
+  <joint name="tool_joint" type="fixed">
+    <parent link="link3"/>
+    <child link="tool0"/>
+    <origin xyz="0 0 ${-quill_len}" rpy="0 0 0"/>
+  </joint>
+  <link name="tool0"/>
+
+</robot>
